@@ -1,0 +1,7 @@
+{
+	"name": "SocketWatcher",
+	"version": "0.1.0",
+	"description": "JavaScript bindings for uv_poll",
+	"main": "SocketWatcher",
+	"gypfile": true
+}
