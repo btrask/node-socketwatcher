@@ -14,7 +14,7 @@ More information on `uv_poll`:
 ```$ npm install socketwatcher```
 
 ```javascript
-var SocketWatcher = require("SocketWatcher");
+var SocketWatcher = require("socketwatcher");
 var watcher = new SocketWatcher();
 watcher.callback = function() { [...] };
 watcher.set(fd, read_flag, write_flag);

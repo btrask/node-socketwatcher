@@ -154,4 +154,9 @@ Handle<Value> SocketWatcher::Set(const Arguments& args) {
     return Undefined();
 }
 
-NODE_MODULE(SocketWatcher, SocketWatcher::Initialize)
+
+void Init(Handle<Object> exports, Handle<Object> module) {
+    SocketWatcher::Initialize(module);
+}
+
+NODE_MODULE(socketwatcher, Init)

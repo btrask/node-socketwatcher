@@ -1,7 +1,7 @@
 {
   "targets": [
     {
-      "target_name": "SocketWatcher",
+      "target_name": "socketwatcher",
       "sources": [ "socket_watcher.cpp" ]
     }
   ]

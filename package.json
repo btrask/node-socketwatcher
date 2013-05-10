@@ -1,6 +1,6 @@
 {
 	"name": "socketwatcher",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"main": "socketwatcher",
 	"description": "Binding for uv_poll and replacement for IOWatcher",
 	"keywords": ["IOWatcher", "uv_poll", "uv_poll_t", "file descriptor", "fd"],
