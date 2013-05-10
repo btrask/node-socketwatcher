@@ -1,11 +1,13 @@
 #SocketWatcher
 
-SocketWatcher is a JavaScript binding for `uv_poll` based on code by @TobyEalden for node_mdns. It's useful as a drop-in replacement for Node's old, private module `IOWatcher`.
+SocketWatcher is a JavaScript binding for `uv_poll` based on code by [TobyEalden](https://github.com/TobyEalden) (without his permission) for node_mdns. It's useful as a drop-in replacement for Node's old, private module `IOWatcher`.
 
 More information on `uv_poll`:
 
 - [libuv header (look for `uv_poll_t`)](https://github.com/joyent/libuv/blob/master/include/uv.h)
 - [External I/O with polling (libuv docs)](http://nikhilm.github.io/uvbook/utilities.html#external-i-o-with-polling)
+- [fs: remove fs.watchFile(), IOWatcher (Node.js bug #3348)](https://github.com/joyent/node/issues/3348)
+- [IOWatcher broken since 0.7.9 (Node.js bug #4136)](https://github.com/joyent/node/issues/4136)
 
 ##Installation and use
 
