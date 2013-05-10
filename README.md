@@ -1,6 +1,6 @@
 #SocketWatcher
 
-SocketWatcher is a JavaScript binding for `uv_poll` based on code by [TobyEalden](https://github.com/TobyEalden) (without his permission) for node_mdns. It's useful as a drop-in replacement for Node's old, private module `IOWatcher`.
+SocketWatcher is a JavaScript binding for `uv_poll` based on code by [TobyEalden](https://github.com/TobyEalden) (with permission) for node_mdns. It's useful as a drop-in replacement for Node's old, private module `IOWatcher`.
 
 More information on `uv_poll`:
 
@@ -28,3 +28,7 @@ The files contributed to node_mdns:
 
 - [socket_watcher.hpp](https://github.com/agnat/node_mdns/blob/6dbd4619c2fe47a17cbc5d236a8e057eb08a1b41/src/socket_watcher.hpp)
 - [socket_watcher.cpp](https://github.com/agnat/node_mdns/blob/6dbd4619c2fe47a17cbc5d236a8e057eb08a1b41/src/socket_watcher.cpp)
+
+##License
+
+MIT licensed, see LICENSE.

@@ -1,7 +1,28 @@
 {
-	"name": "SocketWatcher",
+	"name": "socketwatcher",
 	"version": "0.1.0",
-	"description": "JavaScript bindings for uv_poll",
-	"main": "SocketWatcher",
+	"main": "socketwatcher",
+	"description": "Binding for uv_poll and replacement for IOWatcher",
+	"keywords": ["IOWatcher", "uv_poll", "uv_poll_t", "file descriptor", "fd"],
+	"homepage": "https://github.com/btrask/node-socketwatcher/",
+	"bugs": {
+		"url": "https://github.com/btrask/node-socketwatcher/issues",
+		"email": "bentrastk@comcast.net"
+	},
+   	"license": "MIT",
+    "contributors": [
+    	"Toby Ealden <toby.ealden@gmail.com>",
+    	"Ben Trask <bentrask@comcast.net>"
+    ],
+    "maintainers": [
+    	"Ben Trask <bentrask@comcast.net>"
+    ],
+    "engines": {
+    	"node": ">0.7.9"
+    },
+    "repository": {
+    	"type": "git",
+    	"url": "git://github.com/btrask/node-socketwatcher.git"
+   	},
 	"gypfile": true
 }
