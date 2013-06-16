@@ -1,8 +1,8 @@
 // https://github.com/agnat/node_mdns/blob/6dbd4619c/src/socket_watcher.hpp
 // Copyright (c) 2012 Toby Ealden
 
-#include <node.h>
-#include <node_version.h>
+#include <node/node.h>
+#include <node/node_version.h>
 
 class SocketWatcher : public node::ObjectWrap {
     public:
