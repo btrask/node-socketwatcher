@@ -53,7 +53,7 @@ void SocketWatcher::Initialize(Handle<Object> target) {
     NODE_SET_PROTOTYPE_METHOD(t, "start", SocketWatcher::Start);
     NODE_SET_PROTOTYPE_METHOD(t, "stop", SocketWatcher::Stop);
 
-    target->Set(String::NewSymbol("exports"), t->GetFunction());
+    target->Set(String::NewSymbol("SocketWatcher"), t->GetFunction());
 
     callback_symbol = NODE_PSYMBOL("callback");
 }
@@ -155,8 +155,8 @@ Handle<Value> SocketWatcher::Set(const Arguments& args) {
 }
 
 
-void Init(Handle<Object> exports, Handle<Object> module) {
-    SocketWatcher::Initialize(module);
+void Init(Handle<Object> exports) {
+    SocketWatcher::Initialize(exports);
 }
 
 NODE_MODULE(socketwatcher, Init)
