@@ -14,13 +14,15 @@ More information on `uv_poll`:
 ```$ npm install socketwatcher```
 
 ```javascript
-var SocketWatcher = require("socketwatcher");
+var SocketWatcher = require("socketwatcher").SocketWatcher;
 var watcher = new SocketWatcher();
 watcher.callback = function() { [...] };
 watcher.set(fd, read_flag, write_flag);
 watcher.start();
 // watcher.stop();
 ```
+
+Note: since version 0.2.0, you must use `require("socketwatcher").SocketWatcher`, instead of using the module object directly. Sorry for the inconvenience.
 
 ##Original work
 
