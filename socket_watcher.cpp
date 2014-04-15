@@ -1,5 +1,6 @@
-// https://github.com/agnat/node_mdns/blob/6dbd4619c/src/socket_watcher.cpp
-// Copyright (c) 2012 Toby Ealden
+// Copyright (c) 2012 Toby Ealden.
+// Copyright (c) 2014 Martin Man.
+// vim: ts=2 sw=2 et
 
 #include "socket_watcher.hpp"
 #include <string.h>
@@ -9,154 +10,172 @@ using namespace v8;
 #if NODE_VERSION_AT_LEAST(0, 7, 8)
 // Nothing
 #else
-namespace node {
-    Handle<Value>
-        MakeCallback(const Handle<Object> object,
-        const Handle<Function> callback,
-        int argc,
-        Handle<Value> argv[]) {
-            HandleScope scope;
+namespace node
+{
+  Handle<Value> MakeCallback(Isolate *isolate, const Handle<Object> object, const Handle<Function> callback, int argc, Handle<Value> argv[])
+  { 
+    HandleScope scope(isolate);
 
-            // TODO Hook for long stack traces to be made here.
+    // TODO Hook for long stack traces to be made here.
 
-            TryCatch try_catch;
+    TryCatch try_catch;
 
-            Local<Value> ret = callback->Call(object, argc, argv);
+    Local<Value> ret = callback->Call(object, argc, argv);
 
-            if (try_catch.HasCaught()) {
-                FatalException(try_catch);
-                return Undefined();
-            }
-
-            return scope.Close(ret);
+    if (try_catch.HasCaught()) {
+      FatalException(try_catch);
+      return Undefined();
     }
+
+    return scope.Escape(ret);
+  }
 }  // namespace node
 #endif
 
 
 Persistent<String> callback_symbol;
+Persistent<Function> constructor;
 
-Handle<Value> Calleback(const Arguments& args) {
-    return Undefined();
-};
+// mman, why is this here?
+// Handle<Value> Calleback(const Arguments& args) {
+//     return Undefined();
+// };
 
-SocketWatcher::SocketWatcher() : poll_(NULL), fd_(0), events_(0) {
+SocketWatcher::SocketWatcher() : poll_(NULL), fd_(0), events_(0)
+{
 }
 
-void SocketWatcher::Initialize(Handle<Object> target) {
-    Local<FunctionTemplate> t = FunctionTemplate::New(New);
+void SocketWatcher::Initialize(Handle<Object> exports)
+{
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
 
-    t->SetClassName(String::NewSymbol("SocketWatcher"));
-    t->InstanceTemplate()->SetInternalFieldCount(1);
+  Local<FunctionTemplate> t = FunctionTemplate::New(isolate, New);
 
-    NODE_SET_PROTOTYPE_METHOD(t, "set", SocketWatcher::Set);
-    NODE_SET_PROTOTYPE_METHOD(t, "start", SocketWatcher::Start);
-    NODE_SET_PROTOTYPE_METHOD(t, "stop", SocketWatcher::Stop);
+  t->SetClassName(String::NewFromUtf8(isolate, "SocketWatcher"));
+  t->InstanceTemplate()->SetInternalFieldCount(1);
 
-    target->Set(String::NewSymbol("SocketWatcher"), t->GetFunction());
+  NODE_SET_PROTOTYPE_METHOD(t, "set", SocketWatcher::Set);
+  NODE_SET_PROTOTYPE_METHOD(t, "start", SocketWatcher::Start);
+  NODE_SET_PROTOTYPE_METHOD(t, "stop", SocketWatcher::Stop);
 
-    callback_symbol = NODE_PSYMBOL("callback");
+  exports->Set(String::NewFromUtf8(isolate, "SocketWatcher"), t->GetFunction());
+  constructor.Reset(isolate, t->GetFunction());
+
+  Local<String> c = String::NewFromUtf8(isolate, "callback");
+  callback_symbol.Reset(isolate, c);
 }
 
-Handle<Value> SocketWatcher::Start(const Arguments& args) {
-    HandleScope scope;
-    SocketWatcher *watcher = ObjectWrap::Unwrap<SocketWatcher>(args.Holder());
-    watcher->Start();
-    return Undefined();
+void SocketWatcher::Start(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+  Isolate* isolate = args.GetIsolate();
+  HandleScope scope(isolate);
+  SocketWatcher *watcher = ObjectWrap::Unwrap<SocketWatcher>(args.This());
+  watcher->StartInternal();
 }
 
-void SocketWatcher::Start() {
-    if (poll_ == NULL) {
-        poll_ = new uv_poll_t;
-        memset(poll_,0,sizeof(uv_poll_t));
-        poll_->data = this;
-        uv_poll_init_socket(uv_default_loop(), poll_, fd_);
+void SocketWatcher::StartInternal()
+{
+  if (poll_ == NULL) {
+    poll_ = new uv_poll_t;
+    memset(poll_,0,sizeof(uv_poll_t));
+    poll_->data = this;
+    uv_poll_init_socket(uv_default_loop(), poll_, fd_);
 
-        Ref();
-    }
+    Ref();
+  }
 
-    if (!uv_is_active((uv_handle_t*)poll_)) {
-        uv_poll_start(poll_, events_, &SocketWatcher::Callback);
-    }
+  if (!uv_is_active((uv_handle_t*)poll_)) {
+    uv_poll_start(poll_, events_, &SocketWatcher::Callback);
+  }
 }
 
-void SocketWatcher::Callback(uv_poll_t *w, int status, int revents) {
-    HandleScope scope;
+void SocketWatcher::Callback(uv_poll_t *w, int status, int revents)
+{
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
 
-    SocketWatcher *watcher = static_cast<SocketWatcher*>(w->data);
-    assert(w == watcher->poll_);
+  SocketWatcher *watcher = static_cast<SocketWatcher*>(w->data);
+  assert(w == watcher->poll_);
 
-    Local<Value> callback_v = watcher->handle_->Get(callback_symbol);
-    if (!callback_v->IsFunction()) {
-        watcher->Stop();
-        return;
-    }
+  Local<String> symbol = Local<String>::New(isolate, callback_symbol);
+  Local<Value> callback_v = watcher->handle()->Get(symbol);
+  if(!callback_v->IsFunction()) {
+    watcher->StopInternal();
+    return;
+  }
 
-    Local<Function> callback = Local<Function>::Cast(callback_v);
+  Local<Function> callback = Local<Function>::Cast(callback_v);
 
-    Local<Value> argv[2];
-    argv[0] = Local<Value>::New(revents & UV_READABLE ? True() : False());
-    argv[1] = Local<Value>::New(revents & UV_WRITABLE ? True() : False());
+  Local<Value> argv[2];
+  argv[0] = Local<Value>::New(isolate, revents & UV_READABLE ? True(isolate) : False(isolate));
+  argv[1] = Local<Value>::New(isolate, revents & UV_WRITABLE ? True(isolate) : False(isolate));
 
-    node::MakeCallback(watcher->handle_, callback, 2, argv);
+  node::MakeCallback(isolate, watcher->handle(), callback, 2, argv);
 }
 
-Handle<Value> SocketWatcher::Stop(const Arguments& args) {
-    HandleScope scope;
-    SocketWatcher *watcher = ObjectWrap::Unwrap<SocketWatcher>(args.Holder());
-    watcher->Stop();
-    return Undefined();
+void SocketWatcher::Stop(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+  Isolate* isolate = args.GetIsolate();
+  HandleScope scope(isolate);
+  SocketWatcher *watcher = ObjectWrap::Unwrap<SocketWatcher>(args.This());
+  watcher->StopInternal();
 }
 
-void SocketWatcher::Stop() {
-    if (poll_ != NULL) {
-        uv_poll_stop(poll_);
-        Unref();
-    }
+void SocketWatcher::StopInternal() {
+  if (poll_ != NULL) {
+    uv_poll_stop(poll_);
+    Unref();
+  }
 }
 
-v8::Handle<v8::Value>
-    SocketWatcher::New(const v8::Arguments & args) {
-        HandleScope scope;
-        SocketWatcher *s = new SocketWatcher();
-        s->Wrap(args.This());
-        return args.This();
+void SocketWatcher::New(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+  Isolate* isolate = args.GetIsolate();
+  HandleScope scope(isolate);
+  SocketWatcher *s = new SocketWatcher();
+  s->Wrap(args.This());
+  args.GetReturnValue().Set(args.This());
 }
 
-Handle<Value> SocketWatcher::Set(const Arguments& args) {
-    HandleScope scope;
-    SocketWatcher *watcher = ObjectWrap::Unwrap<SocketWatcher>(args.Holder());
-    if (!args[0]->IsInt32()) {
-        return ThrowException(Exception::TypeError(
-            String::New("First arg should be a file descriptor.")));
-    }
-    int fd = args[0]->Int32Value();
-    if (!args[1]->IsBoolean()) {
-        return ThrowException(Exception::TypeError(
-            String::New("Second arg should boolean (readable).")));
-    }
-    int events = 0;
+void SocketWatcher::Set(const v8::FunctionCallbackInfo<v8::Value>& args)
+{
+  Isolate* isolate = args.GetIsolate();
+  HandleScope scope(isolate);
+  SocketWatcher *watcher = ObjectWrap::Unwrap<SocketWatcher>(args.This());
 
-    if (args[1]->IsTrue()) events |= UV_READABLE;
+  if(!args[0]->IsInt32()) {
+    isolate->ThrowException(Exception::TypeError(
+          String::NewFromUtf8(isolate, "First arg should be a file descriptor.")));
+    return;
+  }
+  int fd = args[0]->Int32Value();
 
-    if (!args[2]->IsBoolean()) {
-        return ThrowException(Exception::TypeError(
-            String::New("Third arg should boolean (writable).")));
-    }
+  int events = 0;
+  if(!args[1]->IsBoolean()) {
+    isolate->ThrowException(Exception::TypeError(
+          String::NewFromUtf8(isolate, "Second arg should boolean (readable).")));
+    return;
+  }
+  if(args[1]->IsTrue()) events |= UV_READABLE;
 
-    if (args[2]->IsTrue()) events |= UV_WRITABLE;
+  if(!args[2]->IsBoolean()) {
+    isolate->ThrowException(Exception::TypeError(
+          String::NewFromUtf8(isolate, "Third arg should boolean (writable).")));
+    return;
+  }
+  if (args[2]->IsTrue()) events |= UV_WRITABLE;
 
-    assert(watcher->poll_ == NULL);
+  assert(watcher->poll_ == NULL);
 
-    watcher->fd_ = fd;
-    watcher->events_ = events;
-
-    return Undefined();
+  watcher->fd_ = fd;
+  watcher->events_ = events;
 }
 
 
-void Init(Handle<Object> exports) {
-    SocketWatcher::Initialize(exports);
+void Init(Handle<Object> exports)
+{
+  SocketWatcher::Initialize(exports);
 }
 
 NODE_MODULE(socketwatcher, Init)

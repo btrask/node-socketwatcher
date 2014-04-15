@@ -1,26 +1,30 @@
-// https://github.com/agnat/node_mdns/blob/6dbd4619c/src/socket_watcher.hpp
-// Copyright (c) 2012 Toby Ealden
+// Copyright (c) 2012 Toby Ealden.
+// Copyright (c) 2014 Martin Man.
+// vim: ts=2 sw=2 et
 
 #include <node.h>
 #include <node_version.h>
+#include <node_object_wrap.h>
+#include <uv.h>
 
-class SocketWatcher : public node::ObjectWrap {
-    public:
-        SocketWatcher();
+class SocketWatcher : public node::ObjectWrap
+{
+  public:
+    SocketWatcher();
 
-        static void Initialize(v8::Handle<v8::Object> target);
+    static void Initialize(v8::Handle<v8::Object> exports);
 
-    private:
-        uv_poll_t* poll_;
-        int fd_;
-        int events_;
+  private:
+    uv_poll_t* poll_;
+    int fd_;
+    int events_;
 
-        static v8::Handle<v8::Value> New(const v8::Arguments & args);
-        static v8::Handle<v8::Value> Set(const v8::Arguments & args);
-        static v8::Handle<v8::Value> Start(const v8::Arguments& args);
-        static v8::Handle<v8::Value> Stop(const v8::Arguments& args);
-        
-        void Start();
-        void Stop();
-        static void Callback(uv_poll_t *w, int status, int events);
+    static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static void Set(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static void Start(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static void Stop(const v8::FunctionCallbackInfo<v8::Value>& args);
+
+    void StartInternal();
+    void StopInternal();
+    static void Callback(uv_poll_t *w, int status, int events);
 };
