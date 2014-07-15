@@ -50,7 +50,7 @@ void SocketWatcher::Initialize(Handle<Object> exports)
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
 
-  Local<FunctionTemplate> t = FunctionTemplate::New(isolate, New);
+  Local<FunctionTemplate> t = FunctionTemplate::New(New);
 
   t->SetClassName(String::NewFromUtf8(isolate, "SocketWatcher"));
   t->InstanceTemplate()->SetInternalFieldCount(1);
@@ -111,7 +111,7 @@ void SocketWatcher::Callback(uv_poll_t *w, int status, int revents)
   argv[0] = Local<Value>::New(isolate, revents & UV_READABLE ? True(isolate) : False(isolate));
   argv[1] = Local<Value>::New(isolate, revents & UV_WRITABLE ? True(isolate) : False(isolate));
 
-  node::MakeCallback(isolate, watcher->handle(), callback, 2, argv);
+  node::MakeCallback(watcher->handle(), callback, 2, argv);
 }
 
 void SocketWatcher::Stop(const v8::FunctionCallbackInfo<v8::Value>& args)
