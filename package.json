@@ -1,6 +1,6 @@
 {
   "name": "socketwatcher",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "main": "./build/Release/socketwatcher.node",
   "description": "Binding for uv_poll and replacement for IOWatcher",
   "keywords": [
