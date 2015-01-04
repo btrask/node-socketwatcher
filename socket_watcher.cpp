@@ -7,32 +7,6 @@
 
 using namespace v8;
 
-#if NODE_VERSION_AT_LEAST(0, 7, 8)
-// Nothing
-#else
-namespace node
-{
-  Handle<Value> MakeCallback(Isolate *isolate, const Handle<Object> object, const Handle<Function> callback, int argc, Handle<Value> argv[])
-  { 
-    HandleScope scope(isolate);
-
-    // TODO Hook for long stack traces to be made here.
-
-    TryCatch try_catch;
-
-    Local<Value> ret = callback->Call(object, argc, argv);
-
-    if (try_catch.HasCaught()) {
-      FatalException(try_catch);
-      return Undefined();
-    }
-
-    return scope.Escape(ret);
-  }
-}  // namespace node
-#endif
-
-
 Persistent<String> callback_symbol;
 Persistent<Function> constructor;
 
@@ -47,29 +21,25 @@ SocketWatcher::SocketWatcher() : poll_(NULL), fd_(0), events_(0)
 
 void SocketWatcher::Initialize(Handle<Object> exports)
 {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
+  NanScope();
 
-  Local<FunctionTemplate> t = FunctionTemplate::New(New);
+  Local<FunctionTemplate> t = NanNew<FunctionTemplate>(New);
 
-  t->SetClassName(String::NewFromUtf8(isolate, "SocketWatcher"));
+  t->SetClassName(NanNew("SocketWatcher"));
   t->InstanceTemplate()->SetInternalFieldCount(1);
 
   NODE_SET_PROTOTYPE_METHOD(t, "set", SocketWatcher::Set);
   NODE_SET_PROTOTYPE_METHOD(t, "start", SocketWatcher::Start);
   NODE_SET_PROTOTYPE_METHOD(t, "stop", SocketWatcher::Stop);
 
-  exports->Set(String::NewFromUtf8(isolate, "SocketWatcher"), t->GetFunction());
-  constructor.Reset(isolate, t->GetFunction());
-
-  Local<String> c = String::NewFromUtf8(isolate, "callback");
-  callback_symbol.Reset(isolate, c);
+  exports->Set(NanNew("SocketWatcher"), t->GetFunction());
+  NanAssignPersistent(constructor, t->GetFunction());
+  NanAssignPersistent(callback_symbol, NanNew("callback"));
 }
 
-void SocketWatcher::Start(const v8::FunctionCallbackInfo<v8::Value>& args)
+NAN_METHOD(SocketWatcher::Start)
 {
-  Isolate* isolate = args.GetIsolate();
-  HandleScope scope(isolate);
+  NanScope();
   SocketWatcher *watcher = ObjectWrap::Unwrap<SocketWatcher>(args.This());
   watcher->StartInternal();
 }
@@ -92,13 +62,12 @@ void SocketWatcher::StartInternal()
 
 void SocketWatcher::Callback(uv_poll_t *w, int status, int revents)
 {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
+  NanScope();
 
   SocketWatcher *watcher = static_cast<SocketWatcher*>(w->data);
   assert(w == watcher->poll_);
 
-  Local<String> symbol = Local<String>::New(isolate, callback_symbol);
+  Local<String> symbol = NanNew(callback_symbol);
   Local<Value> callback_v = watcher->handle()->Get(symbol);
   if(!callback_v->IsFunction()) {
     watcher->StopInternal();
@@ -107,19 +76,19 @@ void SocketWatcher::Callback(uv_poll_t *w, int status, int revents)
 
   Local<Function> callback = Local<Function>::Cast(callback_v);
 
-  Local<Value> argv[2];
-  argv[0] = Local<Value>::New(isolate, revents & UV_READABLE ? True(isolate) : False(isolate));
-  argv[1] = Local<Value>::New(isolate, revents & UV_WRITABLE ? True(isolate) : False(isolate));
+  const unsigned argc = 2;
+  Local<Value> argv[argc]= { NanNew(revents & UV_READABLE ? NanTrue() : NanFalse()),
+                             NanNew(revents & UV_WRITABLE ? NanTrue() : NanFalse()) };
 
-  node::MakeCallback(watcher->handle(), callback, 2, argv);
+  NanMakeCallback(watcher->handle(), callback, argc, argv);
 }
 
-void SocketWatcher::Stop(const v8::FunctionCallbackInfo<v8::Value>& args)
+NAN_METHOD(SocketWatcher::Stop)
 {
-  Isolate* isolate = args.GetIsolate();
-  HandleScope scope(isolate);
+  NanScope();
   SocketWatcher *watcher = ObjectWrap::Unwrap<SocketWatcher>(args.This());
   watcher->StopInternal();
+  NanReturnUndefined();
 }
 
 void SocketWatcher::StopInternal() {
@@ -129,40 +98,42 @@ void SocketWatcher::StopInternal() {
   }
 }
 
-void SocketWatcher::New(const v8::FunctionCallbackInfo<v8::Value>& args)
+NAN_METHOD(SocketWatcher::New)
 {
-  Isolate* isolate = args.GetIsolate();
-  HandleScope scope(isolate);
-  SocketWatcher *s = new SocketWatcher();
-  s->Wrap(args.This());
-  args.GetReturnValue().Set(args.This());
+  NanScope();
+  if (args.IsConstructCall()) {
+    // Invoked as constructor: `new MyObject(...)`
+    SocketWatcher *s = new SocketWatcher();
+    s->Wrap(args.This());
+    NanReturnValue(args.This());
+  } else {
+    // Invoked as plain function `MyObject(...)`, turn into construct call.
+    Local<Function> cons = NanNew<Function>(constructor);
+    NanReturnValue(cons->NewInstance());
+  }
 }
 
-void SocketWatcher::Set(const v8::FunctionCallbackInfo<v8::Value>& args)
+NAN_METHOD(SocketWatcher::Set)
 {
-  Isolate* isolate = args.GetIsolate();
-  HandleScope scope(isolate);
+  NanScope();
   SocketWatcher *watcher = ObjectWrap::Unwrap<SocketWatcher>(args.This());
 
   if(!args[0]->IsInt32()) {
-    isolate->ThrowException(Exception::TypeError(
-          String::NewFromUtf8(isolate, "First arg should be a file descriptor.")));
-    return;
+    NanThrowTypeError("First arg should be a file descriptor.");
+    NanReturnUndefined();
   }
   int fd = args[0]->Int32Value();
 
   int events = 0;
   if(!args[1]->IsBoolean()) {
-    isolate->ThrowException(Exception::TypeError(
-          String::NewFromUtf8(isolate, "Second arg should boolean (readable).")));
-    return;
+    NanThrowTypeError("Second arg should boolean (readable).");
+    NanReturnUndefined();
   }
   if(args[1]->IsTrue()) events |= UV_READABLE;
 
   if(!args[2]->IsBoolean()) {
-    isolate->ThrowException(Exception::TypeError(
-          String::NewFromUtf8(isolate, "Third arg should boolean (writable).")));
-    return;
+    NanThrowTypeError("Third arg should boolean (writable).");
+    NanReturnUndefined();
   }
   if (args[2]->IsTrue()) events |= UV_WRITABLE;
 
@@ -170,6 +141,7 @@ void SocketWatcher::Set(const v8::FunctionCallbackInfo<v8::Value>& args)
 
   watcher->fd_ = fd;
   watcher->events_ = events;
+  NanReturnUndefined();
 }
 
 

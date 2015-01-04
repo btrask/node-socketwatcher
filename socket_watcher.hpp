@@ -2,9 +2,10 @@
 // Copyright (c) 2014 Martin Man.
 // vim: ts=2 sw=2 et
 
-#include <node.h>
-#include <node_version.h>
-#include <node_object_wrap.h>
+#ifndef SOCKETWATCHER_HPP
+#define SOCKETWATCHER_HPP
+
+#include <nan.h>
 #include <uv.h>
 
 class SocketWatcher : public node::ObjectWrap
@@ -19,12 +20,14 @@ class SocketWatcher : public node::ObjectWrap
     int fd_;
     int events_;
 
-    static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
-    static void Set(const v8::FunctionCallbackInfo<v8::Value>& args);
-    static void Start(const v8::FunctionCallbackInfo<v8::Value>& args);
-    static void Stop(const v8::FunctionCallbackInfo<v8::Value>& args);
+    static NAN_METHOD(New);
+    static NAN_METHOD(Set);
+    static NAN_METHOD(Start);
+    static NAN_METHOD(Stop);
 
     void StartInternal();
     void StopInternal();
     static void Callback(uv_poll_t *w, int status, int events);
 };
+
+#endif
