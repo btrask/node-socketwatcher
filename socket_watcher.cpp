@@ -42,6 +42,7 @@ NAN_METHOD(SocketWatcher::Start)
   NanScope();
   SocketWatcher *watcher = ObjectWrap::Unwrap<SocketWatcher>(args.This());
   watcher->StartInternal();
+  NanReturnUndefined();
 }
 
 void SocketWatcher::StartInternal()
@@ -68,7 +69,7 @@ void SocketWatcher::Callback(uv_poll_t *w, int status, int revents)
   assert(w == watcher->poll_);
 
   Local<String> symbol = NanNew(callback_symbol);
-  Local<Value> callback_v = watcher->handle()->Get(symbol);
+  Local<Value> callback_v = NanObjectWrapHandle(watcher)->Get(symbol);
   if(!callback_v->IsFunction()) {
     watcher->StopInternal();
     return;
@@ -80,7 +81,7 @@ void SocketWatcher::Callback(uv_poll_t *w, int status, int revents)
   Local<Value> argv[argc]= { NanNew(revents & UV_READABLE ? NanTrue() : NanFalse()),
                              NanNew(revents & UV_WRITABLE ? NanTrue() : NanFalse()) };
 
-  NanMakeCallback(watcher->handle(), callback, argc, argv);
+  NanMakeCallback(NanObjectWrapHandle(watcher), callback, argc, argv);
 }
 
 NAN_METHOD(SocketWatcher::Stop)
