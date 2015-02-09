@@ -32,6 +32,6 @@
   },
   "gypfile": true,
   "dependencies": {
-    "nan": "^1.6.1"
+    "nan": "~1.6.1"
   }
 }
