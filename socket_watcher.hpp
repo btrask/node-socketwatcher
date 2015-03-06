@@ -1,26 +1,33 @@
-// https://github.com/agnat/node_mdns/blob/6dbd4619c/src/socket_watcher.hpp
-// Copyright (c) 2012 Toby Ealden
+// Copyright (c) 2012 Toby Ealden.
+// Copyright (c) 2014 Martin Man.
+// vim: ts=2 sw=2 et
 
-#include <node.h>
-#include <node_version.h>
+#ifndef SOCKETWATCHER_HPP
+#define SOCKETWATCHER_HPP
 
-class SocketWatcher : public node::ObjectWrap {
-    public:
-        SocketWatcher();
+#include <nan.h>
+#include <uv.h>
 
-        static void Initialize(v8::Handle<v8::Object> target);
+class SocketWatcher : public node::ObjectWrap
+{
+  public:
+    SocketWatcher();
 
-    private:
-        uv_poll_t* poll_;
-        int fd_;
-        int events_;
+    static void Initialize(v8::Handle<v8::Object> exports);
 
-        static v8::Handle<v8::Value> New(const v8::Arguments & args);
-        static v8::Handle<v8::Value> Set(const v8::Arguments & args);
-        static v8::Handle<v8::Value> Start(const v8::Arguments& args);
-        static v8::Handle<v8::Value> Stop(const v8::Arguments& args);
-        
-        void Start();
-        void Stop();
-        static void Callback(uv_poll_t *w, int status, int events);
+  private:
+    uv_poll_t* poll_;
+    int fd_;
+    int events_;
+
+    static NAN_METHOD(New);
+    static NAN_METHOD(Set);
+    static NAN_METHOD(Start);
+    static NAN_METHOD(Stop);
+
+    void StartInternal();
+    void StopInternal();
+    static void Callback(uv_poll_t *w, int status, int events);
 };
+
+#endif
