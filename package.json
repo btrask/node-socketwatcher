@@ -24,7 +24,7 @@
     "Ben Trask <bentrask@comcast.net>"
   ],
   "engines": {
-    "node": ">0.7.9"
+    "node": ">=4"
   },
   "repository": {
     "type": "git",
@@ -32,6 +32,6 @@
   },
   "gypfile": true,
   "dependencies": {
-    "nan": "~1.8.4"
+    "nan": "^2.0.9"
   }
 }
