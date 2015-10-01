@@ -8,22 +8,22 @@
 #include <nan.h>
 #include <uv.h>
 
-class SocketWatcher : public node::ObjectWrap
+class SocketWatcher : public Nan::ObjectWrap
 {
   public:
     SocketWatcher();
 
-    static void Initialize(v8::Handle<v8::Object> exports);
+    static void Initialize(v8::Local<v8::Object> exports);
 
   private:
     uv_poll_t* poll_;
     int fd_;
     int events_;
 
-    static NAN_METHOD(New);
-    static NAN_METHOD(Set);
-    static NAN_METHOD(Start);
-    static NAN_METHOD(Stop);
+    static void New(const Nan::FunctionCallbackInfo<v8::Value>& info);
+    static void Set(const Nan::FunctionCallbackInfo<v8::Value>& info);
+    static void Start(const Nan::FunctionCallbackInfo<v8::Value>& info);
+    static void Stop(const Nan::FunctionCallbackInfo<v8::Value>& info);
 
     void StartInternal();
     void StopInternal();

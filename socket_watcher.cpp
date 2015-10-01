@@ -7,42 +7,33 @@
 
 using namespace v8;
 
-Persistent<String> callback_symbol;
-Persistent<Function> constructor;
-
-// mman, why is this here?
-// Handle<Value> Calleback(const Arguments& args) {
-//     return Undefined();
-// };
+Nan::Persistent<Function> constructor;
 
 SocketWatcher::SocketWatcher() : poll_(NULL), fd_(0), events_(0)
 {
 }
 
-void SocketWatcher::Initialize(Handle<Object> exports)
+void SocketWatcher::Initialize(Local<Object> exports)
 {
-  NanScope();
+  Nan::HandleScope scope;
 
-  Local<FunctionTemplate> t = NanNew<FunctionTemplate>(New);
+  Local<FunctionTemplate> t = Nan::New<FunctionTemplate>(New);
 
-  t->SetClassName(NanNew("SocketWatcher"));
+  t->SetClassName(Nan::New("SocketWatcher").ToLocalChecked());
   t->InstanceTemplate()->SetInternalFieldCount(1);
 
-  NODE_SET_PROTOTYPE_METHOD(t, "set", SocketWatcher::Set);
-  NODE_SET_PROTOTYPE_METHOD(t, "start", SocketWatcher::Start);
-  NODE_SET_PROTOTYPE_METHOD(t, "stop", SocketWatcher::Stop);
+  Nan::SetPrototypeMethod(t, "set", SocketWatcher::Set);
+  Nan::SetPrototypeMethod(t, "start", SocketWatcher::Start);
+  Nan::SetPrototypeMethod(t, "stop", SocketWatcher::Stop);
 
-  exports->Set(NanNew("SocketWatcher"), t->GetFunction());
-  NanAssignPersistent(constructor, t->GetFunction());
-  NanAssignPersistent(callback_symbol, NanNew("callback"));
+  constructor.Reset(t->GetFunction());
+  exports->Set(Nan::New("SocketWatcher").ToLocalChecked(), t->GetFunction());
 }
 
-NAN_METHOD(SocketWatcher::Start)
+void SocketWatcher::Start(const Nan::FunctionCallbackInfo<Value>& info)
 {
-  NanScope();
-  SocketWatcher *watcher = ObjectWrap::Unwrap<SocketWatcher>(args.This());
+  SocketWatcher *watcher = Nan::ObjectWrap::Unwrap<SocketWatcher>(info.Holder());
   watcher->StartInternal();
-  NanReturnUndefined();
 }
 
 void SocketWatcher::StartInternal()
@@ -63,13 +54,13 @@ void SocketWatcher::StartInternal()
 
 void SocketWatcher::Callback(uv_poll_t *w, int status, int revents)
 {
-  NanScope();
+  Nan::HandleScope scope;
 
   SocketWatcher *watcher = static_cast<SocketWatcher*>(w->data);
   assert(w == watcher->poll_);
 
-  Local<String> symbol = NanNew(callback_symbol);
-  Local<Value> callback_v = NanObjectWrapHandle(watcher)->Get(symbol);
+  Local<String> callback_symbol = Nan::New("callback").ToLocalChecked();
+  Local<Value> callback_v = Nan::Get(watcher->handle(), callback_symbol).ToLocalChecked();
   if(!callback_v->IsFunction()) {
     watcher->StopInternal();
     return;
@@ -78,18 +69,18 @@ void SocketWatcher::Callback(uv_poll_t *w, int status, int revents)
   Local<Function> callback = Local<Function>::Cast(callback_v);
 
   const unsigned argc = 2;
-  Local<Value> argv[argc]= { NanNew(revents & UV_READABLE ? NanTrue() : NanFalse()),
-                             NanNew(revents & UV_WRITABLE ? NanTrue() : NanFalse()) };
+  Local<Value> argv[argc] = {
+    revents & UV_READABLE ? Nan::True() : Nan::False(),
+    revents & UV_WRITABLE ? Nan::True() : Nan::False(),
+  };
 
-  NanMakeCallback(NanObjectWrapHandle(watcher), callback, argc, argv);
+  Nan::MakeCallback(watcher->handle(), callback, argc, argv);
 }
 
-NAN_METHOD(SocketWatcher::Stop)
+void SocketWatcher::Stop(const Nan::FunctionCallbackInfo<Value>& info)
 {
-  NanScope();
-  SocketWatcher *watcher = ObjectWrap::Unwrap<SocketWatcher>(args.This());
+  SocketWatcher *watcher = Nan::ObjectWrap::Unwrap<SocketWatcher>(info.Holder());
   watcher->StopInternal();
-  NanReturnUndefined();
 }
 
 void SocketWatcher::StopInternal() {
@@ -99,54 +90,52 @@ void SocketWatcher::StopInternal() {
   }
 }
 
-NAN_METHOD(SocketWatcher::New)
+void SocketWatcher::New(const Nan::FunctionCallbackInfo<Value>& info)
 {
-  NanScope();
-  if (args.IsConstructCall()) {
-    // Invoked as constructor: `new MyObject(...)`
+  Nan::HandleScope scope;
+  if (info.IsConstructCall()) {
+    // Invoked as constructor: `new SocketWatcher(...)`
     SocketWatcher *s = new SocketWatcher();
-    s->Wrap(args.This());
-    NanReturnValue(args.This());
+    s->Wrap(info.This());
+    info.GetReturnValue().Set(info.This());
   } else {
-    // Invoked as plain function `MyObject(...)`, turn into construct call.
-    Local<Function> cons = NanNew<Function>(constructor);
-    NanReturnValue(cons->NewInstance());
+    // Invoked as plain function `SocketWatcher(...)`, turn into construct call.
+    Local<Function> cons = Nan::New<Function>(constructor);
+    info.GetReturnValue().Set(cons->NewInstance());
   }
 }
 
-NAN_METHOD(SocketWatcher::Set)
+void SocketWatcher::Set(const Nan::FunctionCallbackInfo<Value>& info)
 {
-  NanScope();
-  SocketWatcher *watcher = ObjectWrap::Unwrap<SocketWatcher>(args.This());
+  SocketWatcher *watcher = Nan::ObjectWrap::Unwrap<SocketWatcher>(info.Holder());
 
-  if(!args[0]->IsInt32()) {
-    NanThrowTypeError("First arg should be a file descriptor.");
-    NanReturnUndefined();
+  if(!info[0]->IsInt32()) {
+    Nan::ThrowTypeError("First arg should be a file descriptor.");
+    return;
   }
-  int fd = args[0]->Int32Value();
+  int fd = info[0]->Int32Value();
 
+  if(!info[1]->IsBoolean()) {
+    Nan::ThrowTypeError("Second arg should a boolean (readable).");
+    return;
+  }
   int events = 0;
-  if(!args[1]->IsBoolean()) {
-    NanThrowTypeError("Second arg should boolean (readable).");
-    NanReturnUndefined();
-  }
-  if(args[1]->IsTrue()) events |= UV_READABLE;
+  if(info[1]->IsTrue()) events |= UV_READABLE;
 
-  if(!args[2]->IsBoolean()) {
-    NanThrowTypeError("Third arg should boolean (writable).");
-    NanReturnUndefined();
+  if(!info[2]->IsBoolean()) {
+    Nan::ThrowTypeError("Third arg should a boolean (writable).");
+    return;
   }
-  if (args[2]->IsTrue()) events |= UV_WRITABLE;
+  if (info[2]->IsTrue()) events |= UV_WRITABLE;
 
   assert(watcher->poll_ == NULL);
 
   watcher->fd_ = fd;
   watcher->events_ = events;
-  NanReturnUndefined();
 }
 
 
-void Init(Handle<Object> exports)
+void Init(Local<Object> exports)
 {
   SocketWatcher::Initialize(exports);
 }
