@@ -84,7 +84,7 @@ void SocketWatcher::Stop(const Nan::FunctionCallbackInfo<Value>& info)
 }
 
 void SocketWatcher::StopInternal() {
-  if (poll_ != NULL) {
+  if (poll_ != NULL && uv_is_active((uv_handle_t*)poll_)) {
     uv_poll_stop(poll_);
     Unref();
   }
