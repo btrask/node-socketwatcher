@@ -21,7 +21,8 @@
   "license": "MIT",
   "contributors": [
     "Toby Ealden <toby.ealden@gmail.com>",
-    "Ben Trask <bentrask@comcast.net>"
+    "Ben Trask <bentrask@comcast.net>",
+    "Jonah H. Harris <jonah.harris@gmail.com>"
   ],
   "maintainers": [
     "Ben Trask <bentrask@comcast.net>"
@@ -35,6 +36,6 @@
   },
   "gypfile": true,
   "dependencies": {
-    "nan": "^2.0.9"
+    "nan": "^2.14.0"
   }
 }
