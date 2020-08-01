@@ -26,8 +26,8 @@ void SocketWatcher::Initialize(Local<Object> exports)
   Nan::SetPrototypeMethod(t, "start", SocketWatcher::Start);
   Nan::SetPrototypeMethod(t, "stop", SocketWatcher::Stop);
 
-  constructor.Reset(t->GetFunction());
-  exports->Set(Nan::New("SocketWatcher").ToLocalChecked(), t->GetFunction());
+  constructor.Reset(t->GetFunction(Nan::GetCurrentContext()).ToLocalChecked());
+  Nan::Set(exports, Nan::New("SocketWatcher").ToLocalChecked(), t->GetFunction(Nan::GetCurrentContext()).ToLocalChecked());
 }
 
 void SocketWatcher::Start(const Nan::FunctionCallbackInfo<Value>& info)
@@ -74,7 +74,8 @@ void SocketWatcher::Callback(uv_poll_t *w, int status, int revents)
     revents & UV_WRITABLE ? Nan::True() : Nan::False(),
   };
 
-  Nan::MakeCallback(watcher->handle(), callback, argc, argv);
+  Nan::AsyncResource ar("SocketWatcher:callback");
+  ar.runInAsyncScope(watcher->handle(), callback, argc, argv);
 }
 
 void SocketWatcher::Stop(const Nan::FunctionCallbackInfo<Value>& info)
@@ -101,7 +102,7 @@ void SocketWatcher::New(const Nan::FunctionCallbackInfo<Value>& info)
   } else {
     // Invoked as plain function `SocketWatcher(...)`, turn into construct call.
     Local<Function> cons = Nan::New<Function>(constructor);
-    info.GetReturnValue().Set(cons->NewInstance());
+    info.GetReturnValue().Set(Nan::NewInstance(cons).ToLocalChecked());
   }
 }
 
@@ -113,7 +114,7 @@ void SocketWatcher::Set(const Nan::FunctionCallbackInfo<Value>& info)
     Nan::ThrowTypeError("First arg should be a file descriptor.");
     return;
   }
-  int fd = info[0]->Int32Value();
+  int fd = Nan::To<int32_t>(info[0]).FromJust();
 
   if(!info[1]->IsBoolean()) {
     Nan::ThrowTypeError("Second arg should a boolean (readable).");
